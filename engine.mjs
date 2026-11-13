@@ -30,7 +30,8 @@ if (!LOGIN && !process.env.SZ_CHILD) {
 }
 if (process.env.SZ_CHILD) process.on('disconnect', () => process.exit(0));
 const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return {}; } };
-const log = (o) => { const l = JSON.stringify({ t: new Date().toISOString(), ...o }); fs.appendFileSync(LOG, l + '\n'); console.log(l); };
+// Playwright timeout errors carry the request's cookie header: the session token never reaches the log (13/11)
+const log = (o) => { const l = JSON.stringify({ t: new Date().toISOString(), ...o }).replace(/(token(?:_scope)?=)[^;"\s\\]+/g, '$1[REDACTED]'); fs.appendFileSync(LOG, l + '\n'); console.log(l); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Params, self-tuned by retune() (params.json, hot-reloaded). size/maxImpact: share of cash / cap as share of the pool
