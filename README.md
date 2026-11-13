@@ -4,6 +4,8 @@ An unattended trading engine for the stock market of the SafeZone fan event: a 7
 contestant has a tradable stock priced in Cx Bucks, an event currency with no real-world value. It trades on its own,
 protects positions you open by hand, tunes itself, announces its trades in Kick chat, shows everything on a live local dashboard and streams its state.
 
+November 2026, Miami edition: the October run ended on 2026-10-24; the rework plan for the new edition (viewer prize, unknowns to close first, order of work) is in [prompts/REWORK.md](prompts/REWORK.md).
+
 ![Live dashboard, portfolio section](docs/screenshots/portfolio.png)
 
 ## The market (measured, not documented)
