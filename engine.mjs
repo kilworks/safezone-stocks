@@ -10,7 +10,8 @@ if (fs.existsSync('.env')) process.loadEnvFile('.env');
 const HOST = process.env.SITE_HOST;
 if (!HOST) { console.error('SITE_HOST missing in .env (see .env.example)'); process.exit(1); }
 const SITE = `https://${HOST}`, API = `https://api.${HOST}/public/`, MAP = `https://event-public.${HOST}/event/map-snapshot`;
-const LOGIN = process.argv.includes('--login'), DRY = process.argv.includes('--dry');
+const LOGIN = process.argv.includes('--login');
+let DRY = process.argv.includes('--dry');
 const END = Date.parse(process.env.END_AT || '2026-10-24T20:20:00Z');
 if (Date.now() > END && !LOGIN) process.exit(0);
 const LOG = 'trades.jsonl', STATE = 'state.json', PARAMS = 'params.json';
@@ -71,6 +72,18 @@ for (let i = 0; ; i++) {
 if (fs.existsSync('.session.json')) { // one-shot cookie import (import-cookies.mjs)
   await ctx.addCookies(readJson('.session.json').cookies.filter((c) => c.domain.replace(/^\./, '').endsWith(HOST)));
   fs.unlinkSync('.session.json');
+}
+// No session (13/11, Dagu job): trade nothing, keep feeding the stream in dry public mode, and open the site in a window
+// on the PC for the operator to log in; once the token cookie is there, exit so the supervisor restarts in real mode
+const hasToken = async () => (await ctx.cookies(`https://api.${HOST}`)).some((c) => c.name === 'token');
+if (!LOGIN && !DRY && !(await hasToken())) {
+  DRY = true;
+  await ctx.close();
+  ctx = await chromium.launchPersistentContext('./profile', { headless: false, viewport: null });
+  await (ctx.pages()[0] || await ctx.newPage()).goto(`${SITE}/safezone/stock-market`).catch(() => {});
+  log({ ev: 'no_session', msg: 'dry until the operator logs in in the window' });
+  notify('no session: log in in the SafeZone window opened on the PC, the engine switches to trading by itself');
+  setInterval(async () => { if (await hasToken().catch(() => false)) { log({ ev: 'session_ok' }); process.exit(1); } }, 5e3);
 }
 if (LOGIN) {
   await (ctx.pages()[0] || await ctx.newPage()).goto(`${SITE}/safezone/stock-market`);
@@ -154,7 +167,10 @@ const risky = (name, frac = HP_MIN) => { const h = hpOf(name); return !!h && (!h
 const dead = (name, since = 0) => deadAfter(diedAt[name.toLowerCase()], revivedAt[name.toLowerCase()], since);
 
 // Orders. Kick chat announcement when KICK_BEARER is set. The engine tracks its own shares: the operator may hold the same stock.
-const say = (name, msg) => execFile('python', ['kick_say.py', name, msg], { timeout: 30e3 }, (err, out) => log({ ev: 'kick_say', name, out: String(out).trim(), err: err?.message?.slice(0, 120) }));
+// CHAT_SSH (13/11, kil: "une verbose dans le chat des actions"): every action goes to the stream's own chat
+// (cx247vods), posted on that host by szdash/say.py with the channel's token; base64 so no shell reads the text
+const chat = (msg) => execFile(process.env.STREAM_SSH_BIN || 'ssh', [process.env.CHAT_SSH, 'python3', 'szdash/say.py', Buffer.from(msg).toString('base64')], { timeout: 30e3 }, (err, out) => log({ ev: 'chat', msg, out: String(out).trim().slice(0, 120), err: err?.message?.slice(0, 120) }));
+const say = (name, msg) => process.env.CHAT_SSH ? chat(msg) : execFile('python', ['kick_say.py', name, msg], { timeout: 30e3 }, (err, out) => log({ ev: 'kick_say', name, out: String(out).trim(), err: err?.message?.slice(0, 120) }));
 async function trade(side, h, payload, why) {
   const body = { stock_external_id: h.external_id, request_id: crypto.randomUUID(), ...payload };
   if (DRY) return log({ ev: 'dry', side, name: h.name, why, body });
@@ -166,7 +182,7 @@ async function trade(side, h, payload, why) {
     const left = BigInt(state.shares[id] || 0) + (side.endsWith('buy') ? 1n : -1n) * BigInt(r.j.shares); // a trim sells part
     if (left > 0n) state.shares[id] = String(left); else delete state.shares[id];
   }
-  if (r.s === 200 && process.env.KICK_BEARER) say(h.name, sayText(side, h.name, r.j?.cash_cents ?? 0, fs.readFileSync(LOG, 'utf8').split('\n')));
+  if (r.s === 200 && (process.env.KICK_BEARER || process.env.CHAT_SSH)) say(h.name, sayText(side, h.name, r.j?.cash_cents ?? 0, fs.readFileSync(LOG, 'utf8').split('\n')) + (process.env.CHAT_SSH && why ? ` (${why})` : ''));
   return r;
 }
 async function buy(s, amt, why, kind) {
@@ -520,4 +536,16 @@ loop(record, 60e3);
 loop(retune, 2 * 3600e3);
 loop(daily, 24 * 3600e3);
 loop(reloadParams, 30e3);
+// Daily welfare (13/11, kil: "on l'avait ignore"): cx-bucks/claim pays 300 Cx every 24 h (next at 06:00 UTC); claimed as
+// soon as rewards says can_claim. cash() books it as a deposit, so the PnL does not count it as profit.
+async function welfare() {
+  if (DRY) return;
+  const r = await api('cx-bucks/rewards');
+  if (!r.j?.claim?.can_claim) return;
+  const c = await api('cx-bucks/claim', {});
+  log({ ev: 'welfare', status: c.s, res: c.j });
+  if (c.j?.ok && process.env.CHAT_SSH) chat(`SafeZone stock bot claimed the daily welfare: +${(c.j.claimed_cents / 100).toFixed(2)} Cx, it goes into the basket`);
+}
+loop(welfare, 10 * 60e3);
+setTimeout(() => welfare().catch((e) => log({ ev: 'err', fn: 'welfare', msg: e.message })), 20e3);
 setTimeout(() => retune().catch((e) => log({ ev: 'err', fn: 'retune', msg: e.message })), 60e3); // after the first scans: names known

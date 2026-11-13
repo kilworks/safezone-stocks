@@ -18,6 +18,8 @@ export function loadTape(since = 0) {
 
 // Kick chat line. API cash_cents: buy = total debited, sell = net credited, so net = sell - last buy. Kick rejects
 // lines with many symbols (MAX_SPECIAL_CHARS_ERROR): plain words only.
+// stream times in Miami time (13/11, kil: "time zone miami, pas francaise"), DST handled by Intl
+export const miami = (t, n) => new Date(t).toLocaleTimeString("en-GB", { timeZone: "America/New_York", hour12: false }).slice(0, n);
 export function sayText(side, name, cash, lines) {
   const c = (x) => `${(x / 100).toFixed(2)} Cx`;
   if (side.endsWith('buy')) return `SafeZone stocks bought ${name} for ${c(cash)}`;
@@ -116,7 +118,7 @@ export function streamPages(d) {
   const { me, names = {}, health = {}, roster = {}, revived = {}, breadth = 0, now = Date.now(), kindOf = () => '', deaths = [], movers = [], ranking = [], strategies = {},
     trips = [], basket = [], pumps = [], entryAt = {}, others = [] } = d;
   const c = (x) => (x / 100).toFixed(2), s = (x) => (x >= 0 ? '+' : '') + c(x), pad = (x, n) => String(x).slice(0, n).padEnd(n);
-  const gr = (v, x) => col(v >= 0 ? 'g' : 'r', x), hm = (t) => new Date(t).toISOString().slice(11, 16), pct = (r) => `${r >= 0 ? '+' : ''}${(r * 100).toFixed(1)}%`;
+  const gr = (v, x) => col(v >= 0 ? 'g' : 'r', x), hm = (t) => miami(t, 5), pct = (r) => `${r >= 0 ? '+' : ''}${(r * 100).toFixed(1)}%`;
   const age = (t) => { const m = Math.floor((now - t) / 60e3); return m < 60 ? `${m}m` : m < 1440 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${Math.floor(m / 1440)}d${Math.floor((m % 1440) / 60)}h`; };
   // every alive contestant gets a status line, 34 per page: 18/10 the page kept only the 34 weakest of 67 alive, so a
   // healthy one (FloridaBoy, 110/110) never showed. One STATUS page per 34, weakest first across them.
@@ -124,7 +126,7 @@ export function streamPages(d) {
   const two = (a, b) => Array.from({ length: Math.max(a.length, b.length) }, (_, i) => { const l = a[i] || ''; return (l + ' '.repeat(Math.max(0, 48 - vis(l).length)) + (b[i] || '')).trimEnd(); });
   // header: page k/N and title, a bar that fills until the next page (20 s), data time; then one line for viewers
   const fill = Math.floor((now % 20e3) / 2e3);
-  const page = (i, title, sub, body) => [col('c', `${i}/${N}  ${title}`.padEnd(54)) + `next [${'='.repeat(fill)}${' '.repeat(10 - fill)}]   data ${new Date(now).toISOString().slice(11, 19)} UTC`,
+  const page = (i, title, sub, body) => [col('c', `${i}/${N}  ${title}`.padEnd(54)) + `next [${'='.repeat(fill)}${' '.repeat(10 - fill)}]   data ${miami(now, 8)} MIAMI`,
     col('y', sub), '', ...body.slice(0, 19)].join('\n') + '\n';
   const hpCol = (h) => (h.hp < h.max * 0.35 ? 'r' : h.hp < h.max * 0.7 ? 'y' : 'g');
   const bar = (h) => col(hpCol(h), '#'.repeat(Math.round((10 * h.hp) / h.max))) + '-'.repeat(10 - Math.round((10 * h.hp) / h.max));
@@ -135,7 +137,7 @@ export function streamPages(d) {
     const pl = h.current_value_cents - h.cost_basis_cents, at = entryAt[h.external_id];
     pos.push(`${pad(h.name, 17)} ${pad(kindOf(h.external_id) || 'yours', 6)} ${c(h.cost_basis_cents).padStart(9)} ${c(h.current_value_cents).padStart(9)} ${gr(pl, s(pl).padStart(9))} ${gr(pl, pct(h.cost_basis_cents ? pl / h.cost_basis_cents : 0).padStart(7))} ${hpTxt(h.name)} ${(at ? age(at) : '-').padStart(6)}`);
   }
-  const orders = [col('c', 'LAST ORDERS (UTC)')];
+  const orders = [col('c', 'LAST ORDERS (MIAMI)')];
   for (const t of (me.trades || []).slice(0, 14)) orders.push(`${hm(t.occurred_at)}  ${col(t.side === 'buy' ? 'g' : 'r', pad(t.side, 4))}  ${pad(names[t.external_id] || '?', 16)} ${c(t.cash_cents).padStart(8)} Cx`);
   const strat = [col('c', 'STRATEGY   TRIPS   WON        PNL')];
   for (const [k, r] of Object.entries(strategies)) strat.push(`${pad(k, 10)} ${String(r.n).padStart(5)} ${String(r.win).padStart(5)} ${gr(r.pnl, s(r.pnl).padStart(10))}`);
@@ -148,14 +150,14 @@ export function streamPages(d) {
   const bk = [col('c', ' #  BASKET RANK      CALM     NOW   5 MIN')];
   basket.slice(0, 18).forEach((x, i) => bk.push(`${String(i + 1).padStart(2)}  ${pad(x.name, 14)} ${c(x.calm).padStart(7)} ${c(x.price).padStart(7)} ${x.ch5 == null ? '      -' : gr(x.ch5, pct(x.ch5).padStart(7))} ${x.held ? col('g', 'HELD') : i < 10 ? col('y', 'NEXT') : ''}`));
   if (bk.length === 1) bk.push('no ranking yet');
-  const pw = [col('c', 'PUMPS IGNORED (UTC)       PUMP'), ...pumps.slice(-14).reverse().map((x) => `${hm(x.t)}  ${pad(x.name, 16)} ${col('y', `x${x.ratio.toFixed(1)}`.padStart(6))}`)];
+  const pw = [col('c', 'PUMPS IGNORED (MIAMI)       PUMP'), ...pumps.slice(-14).reverse().map((x) => `${hm(x.t)}  ${pad(x.name, 16)} ${col('y', `x${x.ratio.toFixed(1)}`.padStart(6))}`)];
   if (pw.length === 1) pw.push(col('g', 'none so far'));
   pw.push('', col('c', 'A pump: price far above its own'), col('c', '5 min low. The bot ranks on that'), col('c', 'low, so a pump never gets in.'));
   const danger = [col('c', 'IN DANGER (hp < 35% or out)      HP')];
   for (const [u, h] of Object.entries(health).filter(([, h]) => h.alive && (h.out || h.hp < h.max * 0.35)).sort((a, b) => a[1].hp / a[1].max - b[1].hp / b[1].max).slice(0, 18))
     danger.push(`${pad(u, 26)} ${col('r', `${h.hp}/${h.max}`.padStart(7))}${h.out ? col('r', '  out') : ''}`);
   if (danger.length === 1) danger.push(col('g', 'nobody'));
-  const dead = [col('c', 'DEATHS AND REVIVES (UTC)')];
+  const dead = [col('c', 'DEATHS AND REVIVES (MIAMI)')];
   for (const x of deaths.slice(-18).reverse()) dead.push(`${hm(x.t)}  ${pad(x.u, 22)} ${x.revive ? col('g', 'REVIVED') : col('r', pad(x.source || x.cause || '', 14))}`);
   // status: the alive contestants, weakest first, two per line: hp bar, sigil (class), shield, poison, drone, out, live
   const st = Object.entries(health).filter(([, h]) => h.alive).sort((a, b) => a[1].hp / a[1].max - b[1].hp / b[1].max || a[0].localeCompare(b[0])).map(([u, h]) => {
@@ -188,8 +190,8 @@ export function streamPages(d) {
   const ago = (t) => { const x = Math.max(0, Math.round((now - t) / 1e3)); return x < 60 ? `${x}s` : x < 600 ? `${Math.floor(x / 60)}m${String(x % 60).padStart(2, '0')}` : x < 3600 ? `${Math.floor(x / 60)}m` : `${Math.floor(x / 3600)}h`; };
   const ot = others.slice(0, 20).map((x) => `${pad(ago(x.t), 4)} ${star(x.e)} ${sideOf(x)} ${cl(x.c).padStart(8)} ${moveOf(x)}${x.c >= 10000 ? ' ' + col('y', 'BIG') : ''}`);
   const oh = col('c', 'AGO  STOCK             SIDE       CX   MOVE');
-  const top4 = [...w60].sort((p, q) => q.c - p.c).slice(0, 4).map((x) => `${new Date(x.t).toISOString().slice(11, 19)}  ${pad(ago(x.t), 4)}  ${star(x.e)} ${sideOf(x)} ${cx(x.c).padStart(12)}   price ${c(x.pb).padStart(7)} > ${c(x.pa).padStart(7)}  ${moveOf(x)}`);
-  const tradesPage = [...two([oh, ...ot.slice(0, 10)], [oh, ...ot.slice(10)]), '', col('c', 'BIGGEST TRADES, LAST 60 MIN (UTC)'), ...(top4.length ? top4 : ['none']), '',
+  const top4 = [...w60].sort((p, q) => q.c - p.c).slice(0, 4).map((x) => `${miami(x.t, 8)}  ${pad(ago(x.t), 4)}  ${star(x.e)} ${sideOf(x)} ${cx(x.c).padStart(12)}   price ${c(x.pb).padStart(7)} > ${c(x.pa).padStart(7)}  ${moveOf(x)}`);
+  const tradesPage = [...two([oh, ...ot.slice(0, 10)], [oh, ...ot.slice(10)]), '', col('c', 'BIGGEST TRADES, LAST 60 MIN (MIAMI)'), ...(top4.length ? top4 : ['none']), '',
     `${col('y', 'BIG')} 100 Cx or more   ${col('c', '*')} the bot holds this stock   MOVE = price change caused by the trade`];
   const head = col('c', 'NAME          HP BAR      HP SIGIL      SPDOLR');
   const legend = col('c', 'S') + ' shield  ' + col('c', 'P') + ' poisoned  ' + col('c', 'D') + ' drone incoming  ' + col('c', 'O') + ' outside the zone  ' + col('c', 'L') + ' live  ' + col('c', 'R') + ' revived';
@@ -293,7 +295,7 @@ export const funFact = (now) => FUN_FACTS[Math.floor(now / 20e3) % FUN_FACTS.len
 // Bot log for the right panel, newest first, at most 42 columns: own orders (sells with their net PnL), deaths,
 // revives and refused pumps. orders [{ t, side, name, cash, pnl? }].
 export function botLog(orders, deaths, pumps, n = 6) {
-  const hm = (t) => new Date(t).toISOString().slice(11, 16), pad = (x, k) => String(x).slice(0, k).padEnd(k), c = (x) => (x / 100).toFixed(2);
+  const hm = (t) => miami(t, 5), pad = (x, k) => String(x).slice(0, k).padEnd(k), c = (x) => (x / 100).toFixed(2);
   const ev = [...orders.map((o) => ({ t: o.t, l: o.side === 'buy' ? `${hm(o.t)} BUY  ${pad(o.name, 16)} ${c(o.cash).padStart(8)}`
       : `${hm(o.t)} ${col(o.pnl == null || o.pnl >= 0 ? 'g' : 'r', `SELL ${pad(o.name, 16)} ${o.pnl == null ? c(o.cash).padStart(8) : ((o.pnl >= 0 ? '+' : '') + c(o.pnl)).padStart(8)}`)}` })),
     ...deaths.map((x) => ({ t: x.t, l: `${hm(x.t)} ${x.revive ? col('g', `BACK ${pad(x.u, 16)}  revived`) : col('r', `RIP  ${pad(x.u, 16)} ${pad(x.source || x.cause || '', 8)}`)}` })),
@@ -319,7 +321,7 @@ export function ownOrders(lines) {
 // scrolling line as color layers (the "|" that layers() puts at the end gives every layer the same width and height).
 export function bigBanner(others = [], names = {}, now = Date.now(), min = 10000) {
   const c = (x) => (x / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), pct = (r) => `${r >= 0 ? '+' : ''}${(r * 100).toFixed(1)}%`;
-  const v = others.filter((x) => x.c >= min && x.t > now - 3600e3).slice(0, 12).map((x) => `${new Date(x.t).toISOString().slice(11, 16)}  ${col(x.s === 'b' ? 'g' : 'r', x.s === 'b' ? 'BUY' : 'SELL')} ${String(names[x.e] || x.e.slice(-6)).replace(/[^\x20-\x7e]/g, '')} ${c(x.c)} Cx ${col(x.pa >= x.pb ? 'g' : 'r', pct(x.pb ? x.pa / x.pb - 1 : 0))}`);
+  const v = others.filter((x) => x.c >= min && x.t > now - 3600e3).slice(0, 12).map((x) => `${miami(x.t, 5)}  ${col(x.s === 'b' ? 'g' : 'r', x.s === 'b' ? 'BUY' : 'SELL')} ${String(names[x.e] || x.e.slice(-6)).replace(/[^\x20-\x7e]/g, '')} ${c(x.c)} Cx ${col(x.pa >= x.pb ? 'g' : 'r', pct(x.pb ? x.pa / x.pb - 1 : 0))}`);
   const text = v.length ? v.join('       ') : 'no trade of 100 Cx or more in the last hour';
   return layers(text, vis(text).length + 4);
 }
@@ -331,7 +333,7 @@ export function streamTicker(d) {
   return ['CX STOCK BOT', `REALIZED ${me.realized_pnl_cents >= 0 ? '+' : ''}${c(me.realized_pnl_cents)} Cx`,
     part('RISING', mv.filter((m) => m.ret > 0).slice(0, 5).map((m) => `${m.name} ${pct(m.ret)}`)),
     part('FALLING', [...mv].reverse().filter((m) => m.ret < 0).slice(0, 5).map((m) => `${m.name} ${pct(m.ret)}`)),
-    part('LAST ORDERS', (me.trades || []).slice(0, 4).map((t) => `${t.occurred_at.slice(11, 16)} ${t.side} ${names[t.external_id] || '?'} ${c(t.cash_cents)} Cx`)),
+    part('LAST ORDERS', (me.trades || []).slice(0, 4).map((t) => `${miami(Date.parse(t.occurred_at), 5)} ${t.side} ${names[t.external_id] || '?'} ${c(t.cash_cents)} Cx`)),
     `ALIVE ${Object.values(health).filter((h) => h.alive).length}`, 'play money, automated'].filter(Boolean).join('     |     ').replace(/[^\x20-\x7e]/g, '');
 }
 

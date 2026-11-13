@@ -62,7 +62,7 @@ DF="fontsize=21:x=1338:y=729"
 VF="$VF,drawtext=$T:text=#==#    #==#    #==#    #==#    #==#:fontcolor=0xff4fd8:$DF:enable='lt(mod(t\,1)\,0.5)'"
 VF="$VF,drawtext=$T:text=    #==#    #==#    #==#    #==#    :fontcolor=0xe3b341:$DF:enable='gte(mod(t\,1)\,0.5)'"
 # bot log, newest first, colored like the page
-VF="$VF,drawtext=$T:text=BOT LOG (UTC):fontsize=20:fontcolor=0x39d0ff:x=1338:y=771"
+VF="$VF,drawtext=$T:text=BOT LOG (MIAMI):fontsize=20:fontcolor=0x39d0ff:x=1338:y=771"
 LOG=":fontsize=20:line_spacing=4:x=1338:y=804"
 VF="$VF,drawtext=$R:textfile=lw.txt:fontcolor=0xe6edf3$LOG,drawtext=$R:textfile=lg.txt:fontcolor=0x3fb950$LOG"
 VF="$VF,drawtext=$R:textfile=lr.txt:fontcolor=0xff6b6b$LOG,drawtext=$R:textfile=ly.txt:fontcolor=0xe3b341$LOG"
