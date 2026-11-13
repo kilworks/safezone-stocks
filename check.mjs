@@ -192,6 +192,7 @@ assert.deepStrictEqual(compact({ external_id: 'x', occurred_at: '2026-10-17T20:0
     assert.deepStrictEqual(ch.rows.map((r) => r.length), [10, 10], 'chart: w columns x h rows');
     assert.ok(ch.rows[1].startsWith('\u2581') && ch.rows[0].endsWith('\u2588') && ch.lo === 1009 && ch.hi === 1099, 'rising: low bottom-left, full top-right (lo, hi: of the columns)');
     assert.strictEqual(equityChart(pts.slice(0, 1), t0, 10, 2), null, 'control: one point is no chart');
+    assert.ok(!equityChart(pts.slice(0, 30), t0 + 29 * 60e3, 10, 2).rows[1].includes(' '), '30 min of history in a 24 h window: every column drawn');
     assert.strictEqual(moodOf(pts, t0 + 99 * 60e3), 'happy', 'up 1.5% in 15 min: happy');
     assert.strictEqual(moodOf(pts.map((p) => ({ ...p, value: 3000 - p.value })), t0 + 99 * 60e3), 'sad', 'control: down: sad');
     assert.strictEqual(moodOf(pts.map((p) => ({ ...p, value: 1000 })), t0 + 99 * 60e3), 'cool', 'control: flat: cool');

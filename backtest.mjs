@@ -222,6 +222,7 @@ export function streamPages(d) {
 export function equityChart(points, now, w = 44, h = 6, span = 24 * 3600e3) {
   const v = points.filter((p) => p.value != null && p.t > now - span && p.t <= now);
   if (v.length < 2) return null;
+  span = Math.min(span, now - v[0].t); // under 24 h of history the chart starts at the first point, full width (13/11)
   const cols = []; let k = 0, last = null;
   for (let i = 0; i < w; i++) { const end = now - span + ((i + 1) * span) / w; while (k < v.length && v[k].t <= end) last = v[k++].value; cols.push(last); }
   const vals = cols.filter((x) => x != null), lo = Math.min(...vals), hi = Math.max(...vals), lev = h * 8;
