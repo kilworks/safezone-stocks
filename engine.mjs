@@ -361,6 +361,9 @@ function pushStream() {
   // profit overlay: total PnL (realized + open) big in the header, green when positive (pg) or red (pr), detail in ps
   const cx = (x) => `${x >= 0 ? '+' : '-'}${(Math.abs(x) / 100).toFixed(2)}`, total = me.realized_pnl_cents + me.unrealized_pnl_cents;
   const out = { pg: total >= 0 ? `PROFIT ${cx(total)} Cx` : ' ', pr: total < 0 ? `PROFIT ${cx(total)} Cx` : ' ', ps: `realized ${cx(me.realized_pnl_cents)}   open ${cx(me.unrealized_pnl_cents)}` };
+  // header clock, Miami time in US and European formats (kil 13/11)
+  const tz = { timeZone: 'America/New_York' }, us = new Date(now).toLocaleString('en-US', { ...tz, month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  out.ck = `Safe Zone  -  Miami FL   ${us}   /   ${new Date(now).toLocaleString('en-GB', { ...tz, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}`;
   const B = bigBanner(d.others, names, now);
   Object.assign(out, { bw: B.w, bg: B.g, br: B.r, ticker: streamTicker(d), dash: L.w, g: L.g, r: L.r, y: L.y, c: L.c });
   // KPI tiles (labels are in run.sh)
@@ -461,6 +464,9 @@ async function scan() {
       const t = x && await buy(x.h, f.amt, `topfill ${Math.round(x.value / 100)} Cx @${x.h.last_price_cents}`, 'top');
       if (t?.s === 200) return (x.h.shares = String(BigInt(x.h.shares) + BigInt(t.j.shares))); // until the next /me
     }
+    // every scan without an order says why in the chat (kil 13/11: "spam le chat des decisions, mandatory")
+    const c0 = lastCash ?? 0, want = s ? Math.min(Math.floor(c0 * P.topSize), sizeCap(s.last_price_cents)) : 0;
+    if (process.env.CHAT_SSH) chat(`SafeZone bot decision: hold. Basket ${tops.length}/${P.topN}, cash ${(c0 / 100).toFixed(2)} Cx, ${s ? `next ${s.name} would get ${(want / 100).toFixed(2)} Cx, minimum order ${MIN_BUY / 100} Cx` : 'every top slot is held'}. Sells on a spike x${P.spike} or a death.`);
   }
   if (me.holdings.filter((h) => state.kind[h.external_id] !== 'top').length >= MAX_POS) return;
   const held = new Set(me.holdings.map((h) => h.external_id)), cooled = (ms) => live.filter((s) => !held.has(s.external_id) && now - (state.exitedAt[s.external_id] || 0) > ms);

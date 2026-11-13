@@ -209,7 +209,8 @@ assert.deepStrictEqual(compact({ external_id: 'x', occurred_at: '2026-10-17T20:0
     assert.ok(ll.r.includes('-84.21') && !ll.g.includes('-84.21') && ll.y.includes('SKIP') && ll.lw === undefined && lg.split('\n').every((x) => x.replace(/\x01.|\x02/g, '').length <= 42), 'log colors and width');
   }
   const tick = streamTicker({ me, names: { b: 'Big' }, health: { x: { alive: true }, y: { alive: false } }, movers: [{ name: 'Up', ret: 0.2 }, { name: 'Down', ret: -0.1 }] });
-  assert.match(tick, /^CX STOCK BOT +\| +REALIZED \+505\.80 Cx +\| +RISING {2}Up \+20\.0% +\| +FALLING {2}Down -10\.0% +\| +LAST ORDERS {2}00:29 buy Big 20\.00 Cx +\| +ALIVE 1 /);
+  assert.match(tick, /^CX STOCK BOT +\| +REALIZED \+505\.80 Cx +\| +RISING {2}Up \+20\.0% +\| +FALLING {2}Down -10\.0% +\| +LAST ORDERS {2}00:29 buy Big 20\.00 Cx +\| +ALIVE 1$/);
+  assert.doesNotMatch(tick, /play money|automated/i); // kil 13/11: never on the stream
   assert.ok(!tick.includes('\n') && /^[\x20-\x7e]+$/.test(tick), 'one printable ASCII line');
   assert.doesNotMatch(streamTicker({ me, movers: [{ name: 'Up', ret: 0.2 }] }), /FALLING/, 'control: no falling section without a fall');
 }

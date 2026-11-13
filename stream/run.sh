@@ -19,7 +19,7 @@ R="$T:reload=1"
 # header
 VF="drawtext=$T:textfile=banner.txt:fontsize=20:fontcolor=0x39d0ff:line_spacing=0:x=36:y=12"
 VF="$VF,drawtext=fontfile=$B:expansion=none:text=SAFEZONE STOCK BOT:fontsize=42:fontcolor=0xe6edf3:x=285:y=18"
-VF="$VF,drawtext=$T:text=automated play money bot  -  Safe Zone  -  Miami FL:fontsize=22:fontcolor=0x7d8590:x=288:y=75"
+VF="$VF,drawtext=$R:textfile=ck.txt:fontsize=22:fontcolor=0x7d8590:x=288:y=75"
 VF="$VF,drawtext=fontfile=$B:expansion=none:text=LIVE:fontsize=33:fontcolor=0xff5c5c:x=w-135:y=33:enable='lt(mod(t\,1)\,0.6)'"
 # profit: total PnL big and pulsing (green pg.txt / red pr.txt, one of them blank), realized/open under it
 PG="fontfile=$B:expansion=none:reload=1:fontsize=48:x=1080:y=12:alpha='0.8+0.2*sin(t*3)'"
@@ -78,7 +78,7 @@ VF="$VF,drawtext=$R:textfile=ticker.txt:fontsize=30:fontcolor=0x3fb950:x='w-mod(
 while :; do
   if [ -s url ] && [ -s dash.txt ]; then
     [ -s ticker.txt ] || echo "CX STOCK BOT" > ticker.txt
-    for f in g r y c pg pr ps ka kb kc kd ke kf kg kh eqg eqr eqb say lw lg lr ly mga mgb mgc mgd mca mcb mcc mcd mra mrb mrc mrd bw bg br; do
+    for f in g r y c pg pr ps ck ka kb kc kd ke kf kg kh eqg eqr eqb say lw lg lr ly mga mgb mgc mgd mca mcb mcc mcd mra mrb mrc mrd bw bg br; do
       [ -s $f.txt ] || echo " " > $f.txt
     done
     # shellcheck disable=SC2086 # ENC is a list of options

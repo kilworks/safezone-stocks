@@ -334,7 +334,7 @@ export function streamTicker(d) {
     part('RISING', mv.filter((m) => m.ret > 0).slice(0, 5).map((m) => `${m.name} ${pct(m.ret)}`)),
     part('FALLING', [...mv].reverse().filter((m) => m.ret < 0).slice(0, 5).map((m) => `${m.name} ${pct(m.ret)}`)),
     part('LAST ORDERS', (me.trades || []).slice(0, 4).map((t) => `${miami(Date.parse(t.occurred_at), 5)} ${t.side} ${names[t.external_id] || '?'} ${c(t.cash_cents)} Cx`)),
-    `ALIVE ${Object.values(health).filter((h) => h.alive).length}`, 'play money, automated'].filter(Boolean).join('     |     ').replace(/[^\x20-\x7e]/g, '');
+    `ALIVE ${Object.values(health).filter((h) => h.alive).length}`].filter(Boolean).join('     |     ').replace(/[^\x20-\x7e]/g, '');
 }
 
 // Round trips per strategy (buy reason prefix) over trades.jsonl lines: matched buy -> next sell of the same name.

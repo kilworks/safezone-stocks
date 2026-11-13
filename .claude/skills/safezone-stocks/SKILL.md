@@ -97,6 +97,16 @@ whole job: `prompts/JOB.md` section Stop (DAG off first, then engine by PID, sup
 While no session, Dagu replaces the dry engine every 5 min and a new login window opens each time: kil has about
 5 min per window.
 
+## Stream and chat texts (kil 13/11)
+
+- Never "play money" or "automated" on the stream, in its title or in chat (`check.mjs` fails on it). Kick title:
+  "SafeZone stock bot | live trading dashboard | Miami" (set with vodloop `kickapi.set_title`, CHAN_ROOT cx247vods, on Oracle).
+- Header clock `ck.txt`: Miami time, US then European format, pushed by the engine every 2 s.
+- Every scan without an order posts a "decision: hold" line in cx chat with the reason (mandatory, kil). The
+  usual reason once the basket is bought: the next order would be under the 10 Cx minimum (cash spent).
+- Changing `stream/run.sh` = upload as `run.sh.new`, `sh -n`, backup, kill `sh run.sh` then its ffmpeg by PID, `mv`,
+  `setsid nohup sh run.sh`. The Kick session survives a cut of a few seconds (13/11 21:10, same `created_at`).
+
 ## Known open points
 
 - REWORK.md section 2 forbids automatic claims; the engine claims the 300 Cx welfare daily (JOB.md, kil's order of
