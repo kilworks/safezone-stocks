@@ -17,3 +17,4 @@ trades.jsonl
 *.err
 # market data recorded live (other players' ids); only the anonymized test fixture is tracked
 data/*
+oct-austin/

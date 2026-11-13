@@ -13,13 +13,13 @@ cd "$(dirname "$0")" || exit 1
 F=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf
 B=/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf
 SIZE=1920x1080
-ENC="-c:v libx264 -preset ultrafast -tune stillimage -pix_fmt yuv420p -g 16 -crf 18 -maxrate 4000k -bufsize 8000k"
+ENC="-c:v libx264 -preset ultrafast -tune stillimage -pix_fmt yuv420p -g 8 -crf 18 -maxrate 4000k -bufsize 8000k"
 T="fontfile=$F:expansion=none"
 R="$T:reload=1"
 # header
 VF="drawtext=$T:textfile=banner.txt:fontsize=20:fontcolor=0x39d0ff:line_spacing=0:x=36:y=12"
 VF="$VF,drawtext=fontfile=$B:expansion=none:text=SAFEZONE STOCK BOT:fontsize=42:fontcolor=0xe6edf3:x=285:y=18"
-VF="$VF,drawtext=$T:text=automated play money bot  -  Safe Zone  -  Austin TX:fontsize=22:fontcolor=0x7d8590:x=288:y=75"
+VF="$VF,drawtext=$T:text=automated play money bot  -  Safe Zone  -  Miami FL:fontsize=22:fontcolor=0x7d8590:x=288:y=75"
 VF="$VF,drawtext=fontfile=$B:expansion=none:text=LIVE:fontsize=33:fontcolor=0xff5c5c:x=w-135:y=33:enable='lt(mod(t\,1)\,0.6)'"
 # profit: total PnL big and pulsing (green pg.txt / red pr.txt, one of them blank), realized/open under it
 PG="fontfile=$B:expansion=none:reload=1:fontsize=48:x=1080:y=12:alpha='0.8+0.2*sin(t*3)'"
@@ -56,7 +56,7 @@ for M in g:0x3fb950 c:0x39d0ff r:0xff6b6b; do
   done
 done
 VF="$VF,drawtext=$R:textfile=say.txt:fontsize=20:fontcolor=0xe6edf3:line_spacing=3:x=1569:y=495"
-VF="$VF,drawtext=$T:text=CX DANCE FLOOR  -  AUSTIN TX:fontsize=18:fontcolor=0x7d8590:x=1569:y=693"
+VF="$VF,drawtext=$T:text=CX DANCE FLOOR  -  MIAMI FL:fontsize=18:fontcolor=0x7d8590:x=1569:y=693"
 # disco floor: two tile patterns swapping twice a second
 DF="fontsize=21:x=1338:y=729"
 VF="$VF,drawtext=$T:text=#==#    #==#    #==#    #==#    #==#:fontcolor=0xff4fd8:$DF:enable='lt(mod(t\,1)\,0.5)'"
@@ -84,9 +84,9 @@ while :; do
     # shellcheck disable=SC2086 # ENC is a list of options
     # 2026-10-20: what does not move is drawn once a second, the rest 8 times (layers.py,
     # same pixels, half the filter CPU); any trouble there and the full chain runs as before
-    VF_RUN=$(printf '%s' "$VF" | python3 layers.py 8 2>>err.log) || VF_RUN=
+    VF_RUN=$(printf '%s' "$VF" | python3 layers.py 4 2>>err.log) || VF_RUN=
     [ -n "$VF_RUN" ] || VF_RUN=$VF
-    ffmpeg -nostdin -loglevel error -re -f lavfi -i color=c=0x0b0e14:s=$SIZE:r=8 -f lavfi -i anullsrc=r=44100:cl=stereo \
+    ffmpeg -nostdin -loglevel error -re -f lavfi -i color=c=0x0b0e14:s=$SIZE:r=4 -f lavfi -i anullsrc=r=44100:cl=stereo \
       -vf "$VF_RUN" $ENC -c:a aac -b:a 64k -f flv "$(cat url)" 2>>err.log
   fi
   sleep 10

@@ -233,6 +233,10 @@ function exitWhy(h) {
 async function guard() {
   const r = await api('stock-market/me');
   if (r.blocked) return;
+  if ((r.s === 401 || r.s === 403) && DRY) { // --dry without a session (13/11): the stream shows the public market, empty account
+    me ||= { holdings: [], trades: [], realized_pnl_cents: 0, unrealized_pnl_cents: 0, portfolio_value_cents: 0 }; lastOk = Date.now();
+    return;
+  }
   if (r.s === 401 || r.s === 403) {
     authLostAt ||= Date.now();
     if (!authAlerted) { authAlerted = true; log({ ev: 'auth_lost', status: r.s }); notify('session expired: run `node engine.mjs --login` (or import-cookies.mjs), then restart'); }
@@ -305,12 +309,16 @@ function writeLive() {
 const SPLIT = 'cd szdash && exec awk \'/^@@end$/ { for (k in seen) { close(k ".tmp"); system("mv -f " k ".tmp " k ".txt") } delete seen; next } /^@@[a-z]+$/ { f = substr($0, 3); seen[f] = 1; printf "" > (f ".tmp"); next } { print > (f ".tmp") }\'';
 let pipe = null, sent = {};
 const eqPts = fs.existsSync('data/equity.jsonl') ? fs.readFileSync('data/equity.jsonl', 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)).filter((p) => p.t > Date.now() - 25 * 3600e3) : [];
-const SAY = { happy: ['YEEHAW! the bag is growing', 'to the moon, partner'], cool: ['just vibin in Austin', 'watching every trade'], sad: ['rough ride, partner', 'HODL... HODL...'] };
+const SAY = { happy: ['YEEHAW! the bag is growing', 'to the moon, partner'], cool: ['just vibin in Miami', 'watching every trade'], sad: ['rough ride, partner', 'HODL... HODL...'] };
 function pushStream() {
   if (!me || !process.env.STREAM_SSH) return;
   if (!pipe) {
     sent = {};
-    pipe = spawn(process.env.STREAM_SSH_BIN || 'ssh', ['-o', 'ServerAliveInterval=30', process.env.STREAM_SSH, SPLIT], { stdio: ['pipe', 'ignore', 'ignore'] });
+    // STREAM_SSH=wsl (13/11, Miami): ffmpeg runs in WSL on this PC, not on Oracle (its steal dropped nanatty247 on 20/10);
+    // the pipe also starts ~/szdash/run.sh there when it is not running (anchored: this sh -c line also holds the name)
+    pipe = process.env.STREAM_SSH === 'wsl'
+      ? spawn('wsl.exe', ['-e', 'sh', '-c', `cd ~ && { pgrep -f "^sh szdash/run.sh" >/dev/null || setsid nohup sh szdash/run.sh >/dev/null 2>&1 & } && ${SPLIT}`], { stdio: ['pipe', 'ignore', 'ignore'] })
+      : spawn(process.env.STREAM_SSH_BIN || 'ssh', ['-o', 'ServerAliveInterval=30', process.env.STREAM_SSH, SPLIT], { stdio: ['pipe', 'ignore', 'ignore'] });
     const drop = (e) => { if (e) log({ ev: 'stream_err', msg: String(e.message || e) }); pipe = null; };
     pipe.on('error', drop); pipe.on('exit', () => drop()); pipe.stdin.on('error', drop);
   }
@@ -325,7 +333,7 @@ function pushStream() {
   const B = bigBanner(d.others, names, now);
   Object.assign(out, { bw: B.w, bg: B.g, br: B.r, ticker: streamTicker(d), dash: L.w, g: L.g, r: L.r, y: L.y, c: L.c });
   // KPI tiles (labels are in run.sh)
-  const k = (x) => Math.round(x / 100).toLocaleString('en-US'), base = START_CASH + netDeposits(), value = lastCash == null ? null : lastCash + me.portfolio_value_cents;
+  const k = (x) => Math.round(x / 100).toLocaleString('en-US'), base = (Number(process.env.START_CASH) || START_CASH) + netDeposits(), value = lastCash == null ? null : lastCash + me.portfolio_value_cents;
   const won = trips.filter((t) => t.pnl > 0).length, left = Math.max(0, END - now), alive = Object.values(health).filter((h) => h.alive).length;
   Object.assign(out, { ka: value == null ? '-' : `${k(value)} Cx`, kb: value == null ? '-' : `${value >= base ? '+' : ''}${Math.round((value / base - 1) * 100)}%`,
     kc: lastCash == null ? '-' : `${k(lastCash)} Cx`, kd: `${k(me.portfolio_value_cents)} Cx`, ke: String(me.holdings.length), kf: `${won}/${trips.length}`,
