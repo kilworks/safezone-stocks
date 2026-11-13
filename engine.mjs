@@ -84,6 +84,8 @@ if (!LOGIN && !DRY && !(await hasToken())) {
   log({ ev: 'no_session', msg: 'dry until the operator logs in in the window' });
   notify('no session: log in in the SafeZone window opened on the PC, the engine switches to trading by itself');
   setInterval(async () => { if (await hasToken().catch(() => false)) { log({ ev: 'session_ok' }); process.exit(1); } }, 5e3);
+  // the window closed (logged in or not): restart, the next run reads the profile again
+  ctx.on('close', () => { log({ ev: 'login_window_closed' }); process.exit(1); });
 }
 if (LOGIN) {
   await (ctx.pages()[0] || await ctx.newPage()).goto(`${SITE}/safezone/stock-market`);
