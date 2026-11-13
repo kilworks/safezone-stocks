@@ -21,7 +21,10 @@ for (const k of ['start','no_session','auth_lost','session_ok','scan','watchdog'
 const o=L.filter(x=>/^stock-market\/(buy|sell)\$/.test(x.ev));
 console.log('orders', o.length, 'ok', o.filter(x=>x.status===200).length, 'refused', o.filter(x=>x.status!==200).map(x=>x.status).join(',')||0);
 const b=o.filter(x=>x.res?.balance_after_cents!=null).at(-1); if (b) console.log('balance', (b.res.balance_after_cents/100).toFixed(2), 'Cx at', b.t.slice(11,19));
-for (const x of o.slice(-5)) console.log(' ', x.t.slice(11,19), x.ev.slice(13), x.name, x.why, x.status);"
+for (const x of o.slice(-5)) console.log(' ', x.t.slice(11,19), x.ev.slice(13), x.name, x.why, x.status);
+const me=require('./live.json').me||{}; console.log('realized', ((me.realized_pnl_cents||0)/100).toFixed(2), 'open', ((me.unrealized_pnl_cents||0)/100).toFixed(2), 'held', ((me.portfolio_value_cents||0)/100).toFixed(2));
+const eq=require('fs').readFileSync('data/equity.jsonl','utf8').trim().split('\n').at(-1); console.log('equity', eq);
+console.log('blocked', L.filter(x=>x.ev==='blocked').length);"
 ```
 - `start dry=false` and orders `ok` = trading. `no_session` after the last `start` = waiting for kil's login.
 - `scan` older than a minute or a `watchdog` line = the engine is stuck; Dagu restarts it within 5 min.
@@ -61,6 +64,15 @@ better (4,875 / 3,107 / 2,494 / 851). Bigger is worse: maxImpact 0.05 22,398, 0.
 26,292 but a weaker first day. Almost all of that tape is October: re-run the grid on Miami tape after 24 h.
 Change a setting = edit `params.json` (write then rename), never restart the engine for it.
 
+What these settings mean for the money (Fable review 13/11, read before changing anything):
+- A `top` position leaves only on spike, hourly rank (`topReb` 1 h) or death. The HP exit is blind while the HP
+  feed is empty (open point below): a death shows after the -20 % drop.
+- `topForce` true bypasses the kill switch (`trialOn('top')`): a losing basket never stops by itself.
+- In dry mode (no session) `trade()` only logs: no spike sell, no death exit until kil logs in again.
+- **1 h gate** (first one 13/11 21:54 UTC, then daily): last `data/equity.jsonl` `value` >= 30000 cents and no
+  `blocked` line = keep. Value under 28500 (-5 %) = tell kil the number and propose `topForce` false + `topKeep` 0.3
+  (his call: he asked for aggressive).
+
 ## Limits that are not negotiable
 
 - Never more than 2 orders in 2 s (3rd order in 1.6 s = 429 per account; about 6 req/s = IP blocked). kil asked
@@ -80,7 +92,16 @@ kil 13/11: the dashboard stays on Oracle ("on stream deja sur cx247vods, c'est o
 `STREAM_SSH=wsl` mode (ffmpeg in WSL on the PC), unused. Oracle steal measured 66-71 % with the stream on (13/11
 21:10): say it to kil with the number if nanatty247 drops, never move the stream without his word.
 
+DAG file: `C:/Users/kil/Downloads/02 - Projects/instabox-farm/dagu/safezone-engine.yaml` (checked 13/11). Stop the
+whole job: `prompts/JOB.md` section Stop (DAG off first, then engine by PID, supervisor first).
+While no session, Dagu replaces the dry engine every 5 min and a new login window opens each time: kil has about
+5 min per window.
+
 ## Known open points
+
+- REWORK.md section 2 forbids automatic claims; the engine claims the 300 Cx welfare daily (JOB.md, kil's order of
+  13/11 for an automated job). REWORK.md is not amended yet: ask kil once, then amend it.
+- `retune` writes `params.json` in place (no rename): a reload at that instant could read a half file.
 
 - ALIVE tile at 0: roster 186 read, HP feed empty (`health` 0). Miami's health frame differs; not fixed yet.
 - `END_AT=2026-11-21T00:00:00Z` is a guess: set the announced end when known.
