@@ -115,8 +115,9 @@ While no session, Dagu replaces the dry engine every 5 min and a new login windo
 
 ## Known open points
 
-- REWORK.md section 2 forbids automatic claims; the engine claims the 300 Cx welfare daily (JOB.md, kil's order of
-  13/11 for an automated job). REWORK.md is not amended yet: ask kil once, then amend it.
+- Welfare auto-claim authorized by kil 13/11 ("j'autorise click auto"), written in REWORK.md section 2.
+- If kil says the stream is cut while Kick says live: check `ss -tnpi` `bytes_sent` of the cx ffmpeg on Oracle
+  (grows about 13 MB a minute); `/proc/<pid>/io` wchar stays 0 and misleads. Frozen: kill that ffmpeg by PID, run.sh relaunches it.
 - Fixed 13/11: `retune` writes `params.json` by rename; `log()` redacts `token=` (Playwright timeouts carried the
   cookie into `trades.jsonl`; old lines scrubbed, also in `oct-austin/`). Never print `trades.jsonl` err lines whole.
 

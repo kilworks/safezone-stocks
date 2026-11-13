@@ -19,6 +19,7 @@ the engine risks a single Cx on it.
 - Every API call goes through the engine's queue (2.5 req/s, back-off on 403, retry on 429). Never a script that
   loops on the API outside that queue. One order per scan. Never more than 2 orders in 2 s.
 - Map feed: the health and roster frame only. Positions are never decoded, stored or derived.
+- kil, 2026-11-13: "j'autorise click auto": the engine claims the daily welfare by itself (JOB.md, Welfare).
 - The engine automates stock orders and nothing else. No chat posting for rewards, no claim clicking, no gambling, no
   attack purchases by script, unless kil writes the authorization in this file.
 - Every October number is a hypothesis for Miami until re-measured on Miami tape. Tag every fact in `FACTS.md`:
