@@ -42,7 +42,7 @@ VF="$VF,drawtext=$R:textfile=r.txt:fontcolor=0xff6b6b$PAGE,drawtext=$R:textfile=
 VF="$VF,drawtext=$R:textfile=c.txt:fontcolor=0x39d0ff$PAGE"
 # right panel: 24 h value chart
 VF="$VF,drawbox=x=1314:y=234:w=2:h=708:color=0x30363d:t=fill"
-VF="$VF,drawtext=$T:text=TOTAL VALUE  -  LAST 24 H:fontsize=20:fontcolor=0x39d0ff:x=1338:y=243"
+VF="$VF,drawtext=$T:text=TOTAL VALUE  -  UP TO 24 H:fontsize=20:fontcolor=0x39d0ff:x=1338:y=243"
 EQ=":fontsize=21:line_spacing=0:x=1338:y=276"
 VF="$VF,drawtext=$R:textfile=eqg.txt:fontcolor=0x3fb950$EQ,drawtext=$R:textfile=eqr.txt:fontcolor=0xff6b6b$EQ"
 VF="$VF,drawtext=$R:textfile=eqb.txt:fontsize=18:fontcolor=0x9da7b3:x=1338:y=435"

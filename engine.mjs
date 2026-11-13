@@ -551,7 +551,7 @@ async function retune() {
   }
   if (!c.adopt && !sv.adopt && !tp.adopt) return;
   P = { ...P, ...c.adopt, ...sv.adopt, ...tp.adopt };
-  fs.writeFileSync(PARAMS, JSON.stringify(P)); paramsMtime = fs.statSync(PARAMS).mtimeMs;
+  fs.writeFileSync(PARAMS + '.tmp', JSON.stringify(P)); fs.renameSync(PARAMS + '.tmp', PARAMS); paramsMtime = fs.statSync(PARAMS).mtimeMs;
   notify(`new params ${JSON.stringify(P)}`);
 }
 async function reloadParams() { // edit params.json: picked up within 30 s, no restart
