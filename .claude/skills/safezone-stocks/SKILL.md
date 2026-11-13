@@ -105,6 +105,8 @@ While no session, Dagu replaces the dry engine every 5 min and a new login windo
 
 - Never "play money" or "automated" on the stream, in its title or in chat (`check.mjs` fails on it). Kick title:
   "SafeZone stock bot | live trading dashboard | Miami" (set with vodloop `kickapi.set_title`, CHAN_ROOT cx247vods, on Oracle).
+- Mascot (kil 13/11 "plus de verbose"): an order, death or pump shows 40 s, then `idleTalk()` changes line every
+  8 s: bag value, best pick since entry, weakest holding HP, biggest 5 min mover, the scan decision, survivors, fun fact.
 - Header clock `ck.txt`: Miami time, US then European format, pushed by the engine every 2 s.
 - Every scan without an order posts a "decision: hold" line in cx chat with the reason (mandatory, kil). The
   usual reason once the basket is bought: the next order would be under the 10 Cx minimum (cash spent).

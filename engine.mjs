@@ -253,6 +253,7 @@ function trialOn(prefix) {
 // Exits, every 5 s. Manual positions: trail, death, hp, elimination, dump; never on time. Engine positions: crash ('dip')
 // and survivor buys sell on time unless in run mode (peak >= runStart x entry: runTrail trail, RUN_HOLD cap); the top
 // basket sells on rank (scan). All: status, death, hp, elimination. /me 500s: last holdings, repriced one by one.
+let lastDecision = ''; // the scan's last "hold" reason, for the mascot
 let me = null, authAlerted = false, lastOk = Date.now(), authLostAt = 0, lastBreadth = 0, names = {}, movers = [], ranking = [], basket = [], pumps = [];
 const trimAt = {}; // a trim's /me can lag: no adopt of the shares just sold
 const seen = {}; // each holding's price at every guard tick, last 6 min: its calm price for the spike exit
@@ -381,9 +382,22 @@ function pushStream() {
   // mascot and what it says: the bot's last move within 2 min, else a death or revive, else its mood
   const mood = moodOf(eqPts, now), poses = mascot(mood), o = orders.at(-1), dx = recentDeaths.at(-1), px = pumps.at(-1);
   for (const [m, p] of [['happy', 'mg'], ['cool', 'mc'], ['sad', 'mr']]) ['a', 'b', 'c', 'd'].forEach((x, j) => { out[p + x] = m === mood ? poses[j] : ' '; });
-  const recent = (t) => t && now - t < 2 * 60e3;
+  const recent = (t) => t && now - t < 40e3; // 40 s on an event, then the idle talk resumes
   out.say = bubble(recent(o?.t) ? (o.side === 'buy' ? `BOUGHT ${o.name}! ${(o.cash / 100).toFixed(2)} Cx` : `SOLD ${o.name} ${o.pnl == null ? '' : `${o.pnl >= 0 ? '+' : ''}${(o.pnl / 100).toFixed(2)} Cx`}${o.pnl > 0 ? ' yeehaw' : ''}`)
-    : recent(dx?.t) ? (dx.revive ? `${dx.u} IS BACK from the dead!` : `RIP ${dx.u}... selling fast`) : recent(px?.t) ? `nice try pumpers, ${px.name} ignored` : Math.floor(now / 20e3) % 4 === 0 ? SAY[mood][Math.floor(now / 80e3) % 2] : `FUN FACT: ${funFact(now)}`);
+    : recent(dx?.t) ? (dx.revive ? `${dx.u} IS BACK from the dead!` : `RIP ${dx.u}... selling fast`) : recent(px?.t) ? `nice try pumpers, ${px.name} ignored` : idleTalk());
+  // nothing new for 40 s: a new line every 8 s about the bag, its best pick, the weakest holding's HP, the market's
+  // biggest mover, the next decision, the survivors, a fun fact (kil 13/11: "que le personnage ait plus de verbose")
+  function idleTalk() {
+    const pc = (r) => `${r >= 0 ? '+' : ''}${(r * 100).toFixed(1)}%`, held = me.holdings.map((h) => ({ n: h.name, r: entryPx(h) ? h.last_price_cents / entryPx(h) - 1 : 0, hp: hpOf(h.name) }));
+    const best = held.toSorted((a, b) => b.r - a.r)[0], weak = held.filter((x) => x.hp?.max).toSorted((a, b) => a.hp.hp / a.hp.max - b.hp.hp / b.hp.max)[0];
+    const mv = movers.toSorted((a, b) => Math.abs(b.ret) - Math.abs(a.ret))[0];
+    const talk = [`${SAY[mood][Math.floor(now / 80e3) % 2]}${value == null ? '' : `. Bag worth ${k(value)} Cx`}`,
+      best && `My best pick: ${best.n}, ${pc(best.r)} since I bought`,
+      weak && `Eyes on ${weak.n}: HP ${weak.hp.hp}/${weak.hp.max}. Under 85% I sell`,
+      mv && `${mv.name} moved ${pc(mv.ret)} in 5 min. ${mv.ret > 0 ? 'I never chase a pump' : 'Dips are where I shop'}`,
+      lastDecision, alive && `${alive} of ${Object.keys(health).length} still alive in Miami`, `FUN FACT: ${funFact(now)}`].filter(Boolean);
+    return talk[Math.floor(now / 8e3) % talk.length];
+  }
   const lg = layers(botLog(orders.slice(-12), recentDeaths, pumps), 50);
   Object.assign(out, { lw: lg.w, lg: lg.g, lr: lg.r, ly: lg.y });
   const batch = Object.entries(out).filter(([key, v]) => sent[key] !== v);
@@ -468,6 +482,7 @@ async function scan() {
     }
     // every scan without an order says why in the chat (kil 13/11: "spam le chat des decisions, mandatory")
     const c0 = lastCash ?? 0, want = s ? Math.min(Math.floor(c0 * P.topSize), sizeCap(s.last_price_cents)) : 0;
+    lastDecision = s ? (want >= MIN_BUY ? `Next on my list: ${s.name}, ${(want / 100).toFixed(0)} Cx ready` : `Cash ${(c0 / 100).toFixed(0)} Cx, too thin to buy ${s.name}. A spike sale refills me`) : `All ${P.topN} slots full. I sell at x${P.spike} or on a death`;
     if (process.env.CHAT_SSH) chat(`SafeZone bot decision: hold. Basket ${tops.length}/${P.topN}, cash ${(c0 / 100).toFixed(2)} Cx, ${s ? `next ${s.name} would get ${(want / 100).toFixed(2)} Cx, minimum order ${MIN_BUY / 100} Cx` : 'every top slot is held'}. Sells on a spike x${P.spike} or a death.`);
   }
   if (me.holdings.filter((h) => state.kind[h.external_id] !== 'top').length >= MAX_POS) return;
