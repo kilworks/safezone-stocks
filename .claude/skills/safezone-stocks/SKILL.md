@@ -117,7 +117,8 @@ While no session, Dagu replaces the dry engine every 5 min and a new login windo
 
 - REWORK.md section 2 forbids automatic claims; the engine claims the 300 Cx welfare daily (JOB.md, kil's order of
   13/11 for an automated job). REWORK.md is not amended yet: ask kil once, then amend it.
-- `retune` writes `params.json` in place (no rename): a reload at that instant could read a half file.
+- Fixed 13/11: `retune` writes `params.json` by rename; `log()` redacts `token=` (Playwright timeouts carried the
+  cookie into `trades.jsonl`; old lines scrubbed, also in `oct-austin/`). Never print `trades.jsonl` err lines whole.
 
 - `END_AT=2026-11-21T00:00:00Z` is a guess: set the announced end when known.
 - U1 (what the viewer leaderboard ranks) is still unknown: REWORK.md section 4.
