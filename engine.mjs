@@ -62,9 +62,13 @@ async function notify(text) { // Telegram, only for what needs the operator
 }
 
 // Browser profile holds the session. A profile still locked by the dying old process serves no cookie: reopen.
+// BROWSER_BIN (13/11): Kick's login refuses Playwright's own Chromium, so the session lives in a Brave profile of its own
+// (profile-brave), logged into by the operator in a plain Brave window, then read headless by the same Brave binary.
+const BIN = process.env.BROWSER_BIN, PROFILE = BIN ? './profile-brave' : './profile';
+const BROWSER = BIN ? { executablePath: BIN, args: ['--disable-blink-features=AutomationControlled'] } : {};
 let ctx;
 for (let i = 0; ; i++) {
-  ctx = await chromium.launchPersistentContext('./profile', { headless: !LOGIN, viewport: null });
+  ctx = await chromium.launchPersistentContext(PROFILE, { ...BROWSER, headless: !LOGIN, viewport: null });
   const ok = (await ctx.cookies(`https://api.${HOST}`)).some((c) => c.name === 'token');
   if (ok || i >= 11 || LOGIN || fs.existsSync('.session.json')) { if (i) log({ ev: 'profile_retry', tries: i, ok }); break; }
   await ctx.close(); await sleep(5e3);
@@ -79,13 +83,22 @@ const hasToken = async () => (await ctx.cookies(`https://api.${HOST}`)).some((c)
 if (!LOGIN && !DRY && !(await hasToken())) {
   DRY = true;
   await ctx.close();
-  ctx = await chromium.launchPersistentContext('./profile', { headless: false, viewport: null });
+  if (BIN) { // a plain Brave window (no automation) holds the profile; public API reads go through a bare context
+    const win = spawn(BIN, [`--user-data-dir=${fs.realpathSync(PROFILE)}`, '--new-window', `${SITE}/safezone/stock-market`], { stdio: 'ignore' });
+    spawn('powershell.exe', ['-NoProfile', '-Command', "(New-Object -ComObject WScript.Shell).Popup('SafeZone bot : connecte-toi (Login with Kick) dans la fenetre Brave qui vient de s ouvrir, attends ton solde, puis ferme-la. Le bot passe seul en trading.',0,'SafeZone bot',64)"], { detached: true, stdio: 'ignore' }).unref();
+    ctx = await (await chromium.launch(BROWSER)).newContext();
+    log({ ev: 'no_session', msg: 'dry until the operator logs in in the Brave window' });
+    notify('no session: log in in the Brave SafeZone window on the PC, then close it; the engine switches to trading by itself');
+    win.on('exit', () => { log({ ev: 'login_window_closed' }); process.exit(1); });
+  } else {
+  ctx = await chromium.launchPersistentContext(PROFILE, { headless: false, viewport: null });
   await (ctx.pages()[0] || await ctx.newPage()).goto(`${SITE}/safezone/stock-market`).catch(() => {});
   log({ ev: 'no_session', msg: 'dry until the operator logs in in the window' });
   notify('no session: log in in the SafeZone window opened on the PC, the engine switches to trading by itself');
   setInterval(async () => { if (await hasToken().catch(() => false)) { log({ ev: 'session_ok' }); process.exit(1); } }, 5e3);
   // the window closed (logged in or not): restart, the next run reads the profile again
   ctx.on('close', () => { log({ ev: 'login_window_closed' }); process.exit(1); });
+  }
 }
 if (LOGIN) {
   await (ctx.pages()[0] || await ctx.newPage()).goto(`${SITE}/safezone/stock-market`);
