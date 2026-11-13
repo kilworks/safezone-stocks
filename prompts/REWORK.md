@@ -67,6 +67,22 @@ OCT (measured in Austin, to re-measure)
 - Account: about 607 Cx at the start, 865 after 5 h, deposits counted apart (`state.deposits`), engine ended
   2026-10-24 20:20 UTC. The scheduled task `SafezoneStocks` is now Disabled.
 
+MEASURED on 2026-11-13 (logged in, site and October tape)
+- The market is not open: `/safezone/stock-market` says "No active market", `stock-market/me` returns `market: null`,
+  the balance is 0.00 Cx, 116 contestants are registered with their stats hidden. `/safezone/leaderboards` redirects
+  to the October recap: there is no viewer leaderboard to read yet (U1, U2, U7 stay open).
+- The site's schemas name the fields that will close U3 and U5 the minute a market opens: `fee_bps`,
+  `starting_cash_cents`, `reserve_cash_cents`, `initial_price_cents`, `min_trade_cash_cents`, `max_trade_cash_cents`,
+  `settlement_price_cents`, `settled_at`, `initial_grant_cents`. Read them from the `market` object, do not guess.
+- October recap: 181,783 trades, 55.4M Cx, 6,944 traders, 147 stocks. P&L is "realised and unrealised at the final
+  price". Best trader +60,958 Cx with 39 trades; our account +1,988 with 560 trades. Median trader -70.
+- Where the big profits came from (tape): whale buys of 20,000 to 50,000 Cx that take a stock to 5x in one trade,
+  gone within a minute; the holders who sold into them took the money. The pool reserve is 10,000 Cx x sqrt(price / 10).
+  A stock of 60 Cx or more loses a third in the hour before its death and is at 0.36x four hours after it.
+- S0, done on 2026-11-13: the spike exit (`spike` 1.5, `spikeRebuy` 1.2, `calmSeen`, `node spike.mjs`). Replay: 600 Cx
+  end at 8,400 to 18,300 with 10 to 40 stocks against 460 to 1,200 without it, positive on each of the 4 days. Not
+  seen live. It is the first thing to verify on Miami tape, before S1 to S6.
+
 ## 4. The unknowns that decide the strategy (close them in this order)
 
 U1 What the viewer leaderboard ranks. Three candidates, each with a different engine:

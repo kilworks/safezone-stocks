@@ -419,6 +419,11 @@ export function simulateSurv({ paths, t0, t1 }, Q, deaths, names = {}) {
 // min(now, topCalm/2 ago, topCalm ago): 18/10 a pump took a 22 Cx stock to 227 for 30 s, the basket bought it at the
 // top and it was back at 22 (-84 Cx). From 866 Cx; Cx PnL of the window and of each half.
 export const calmPrice = (now, half, full) => Math.min(now, half ?? 0, full ?? 0);
+// Calm price of a holding from the engine's own sightings [{ t, p }], oldest first: the lowest of 2 and 5 min ago (a
+// sighting at least 30 s old stands in for a missing one), null without one. A holding at P.spike x its calm price is
+// sold into the pump and bought back once it is down again: replayed on the October tape (spike.mjs), 600 Cx end
+// at 3,500 to 18,000 against 160 to 1,200 for the same basket held without it, positive on each of the 4 days.
+export const calmSeen = (obs, now) => { const at = (ms) => obs.findLast((o) => o.t <= now - ms)?.p, a = at(120e3) ?? at(30e3); return a ? Math.min(a, at(300e3) ?? a) : null; };
 export function simulateTop({ paths, t0, t1 }, Q, step = 60e3) {
   const { topN, topExit, topReb, topSize = 0.15, topCalm = 0 } = Q, imp = (p, c) => c / (R0 * Math.sqrt(p / 1000));
   const run = (from, to) => {

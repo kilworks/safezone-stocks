@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { execFile, fork, spawn } from 'node:child_process';
-import { tuneCrash, tuneSurv, tuneTop, loadTape, compact, breadthOf, BREADTH_WINDOW, sayText, decodeHealth, trialTally, stuck, deadAfter, calmPrice, streamPages, streamTicker, layers, roundTrips, equityChart, moodOf, mascot, bubble, botLog, ownOrders, START_CASH, funFact, lastBalance, fillPick, manualFlows, adopts, bigBanner, trimPick } from './backtest.mjs';
+import { tuneCrash, tuneSurv, tuneTop, loadTape, compact, breadthOf, BREADTH_WINDOW, sayText, decodeHealth, trialTally, stuck, deadAfter, calmPrice, calmSeen, streamPages, streamTicker, layers, roundTrips, equityChart, moodOf, mascot, bubble, botLog, ownOrders, START_CASH, funFact, lastBalance, fillPick, manualFlows, adopts, bigBanner, trimPick } from './backtest.mjs';
 
 if (fs.existsSync('.env')) process.loadEnvFile('.env');
 const HOST = process.env.SITE_HOST;
@@ -38,8 +38,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // topForce: the operator keeps the top basket on; retune and the kill switch no longer touch topN.
 // topKeep: the share of the total value kept in cash for the active strategies: above it, a full basket tops up its
 // smallest position; under half of it, the biggest basket position is trimmed back up to it (1 = off).
+// spike: any holding at spike x its calm price (calmSeen) is sold into the pump, within one guard tick (0 = off);
+// spikeRebuy: the basket may buy it back without the 10 min wait once it is under spikeRebuy x that calm price.
 const DEFAULTS = { size: 0.25, maxImpact: 0.015, crashDrop: 0.25, crashFlat: 0.10, dipHold: 10 * 60e3, runStart: 1.10, runTrail: 0.85,
-  survTop: 2, survHold: 30 * 60e3, topN: 10, topExit: 20, topReb: 60 * 60e3, topSize: 0.15, topCalm: 5 * 60e3, topForce: false, topKeep: 1 };
+  survTop: 2, survHold: 30 * 60e3, topN: 10, topExit: 20, topReb: 60 * 60e3, topSize: 0.15, topCalm: 5 * 60e3, topForce: false, topKeep: 1,
+  spike: 1.5, spikeRebuy: 1.2 };
 let P = { ...DEFAULTS, ...readJson(PARAMS) }, paramsMtime = fs.existsSync(PARAMS) ? fs.statSync(PARAMS).mtimeMs : 0;
 const MIN_BUY = 1000, MAX_POS = 6, COOLDOWN = 30 * 60e3, CRASH_COOLDOWN = 5 * 60e3, TRIAL = 10, SURV_DELAY = 20e3;
 // HP_EXIT 0.85, HP_MIN 0.9 (20/10 02:15 UTC, 11 left in a tiny last circle, zombies): from 23:03 to 02:00, every live
@@ -219,6 +222,7 @@ function trialOn(prefix) {
 // basket sells on rank (scan). All: status, death, hp, elimination. /me 500s: last holdings, repriced one by one.
 let me = null, authAlerted = false, lastOk = Date.now(), authLostAt = 0, lastBreadth = 0, names = {}, movers = [], ranking = [], basket = [], pumps = [];
 const trimAt = {}; // a trim's /me can lag: no adopt of the shares just sold
+const seen = {}; // each holding's price at every guard tick, last 6 min: its calm price for the spike exit
 const lastPrice = {}, status = {}, eliminated = {}, lastTradeAt = {}, STARTED = Date.now();
 // why a holding must go whatever its strategy (status, death, HP, elimination), or null
 function exitWhy(h) {
@@ -255,8 +259,12 @@ async function guard() {
     }
     state.peak[id] = Math.max(state.peak[id] || 0, p);
     const kind = state.kind[id], top = kind === 'top', run = !top && state.peak[id] >= entryPx(h) * P.runStart;
+    const obs = (seen[id] ||= []), now = Date.now(); obs.push({ t: now, p }); while (obs[0].t < now - 6 * 60e3) obs.shift();
+    const calm = calmSeen(obs, now), spike = P.spike && calm && p >= P.spike * calm;
+    if (spike) (state.spikeAt ||= {})[id] = { t: now, calm };
     const why = run && p < state.peak[id] * P.runTrail ? `runtrail ${p}<${Math.round(state.peak[id] * P.runTrail)}`
-      : !top && Date.now() - state.entryAt[id] > (run ? RUN_HOLD : kind === 'surv' ? P.survHold : P.dipHold) ? `time ${p}` : common;
+      : !top && Date.now() - state.entryAt[id] > (run ? RUN_HOLD : kind === 'surv' ? P.survHold : P.dipHold) ? `time ${p}`
+      : common || (spike ? `spike ${p} x${(p / calm).toFixed(2)} calm ${calm}` : null);
     lastPrice[id] = p;
     if (why) await sellOwn(h, why);
   }
@@ -381,7 +389,9 @@ async function scan() {
     }
     // entry by calm price (the lowest of now, topCalm/2 and topCalm ago; no sparkline point = no trade = calm): a 30 s pump never ranks
     const calm = (x) => P.topCalm ? calmPrice(x.last_price_cents, priceSince(x.external_id, now - P.topCalm / 2) ?? x.last_price_cents, priceSince(x.external_id, now - P.topCalm) ?? x.last_price_cents) : x.last_price_cents;
-    const mine = new Set(me.holdings.map((h) => h.external_id)), byCalm = ranked.toSorted((a, b) => calm(b) - calm(a)), s = byCalm.slice(0, P.topN).find((x) => !mine.has(x.external_id) && !(state.exitedAt[x.external_id] > now - 10 * 60e3)); // 10 min: no buy back right after an exit
+    // a spike exit is bought back as soon as the price is down again; any other exit waits 10 min
+    const back = (x) => { const k = state.spikeAt?.[x.external_id]; return !!k && k.t > state.exitedAt[x.external_id] - 60e3 && x.last_price_cents <= P.spikeRebuy * k.calm; };
+    const mine = new Set(me.holdings.map((h) => h.external_id)), byCalm = ranked.toSorted((a, b) => calm(b) - calm(a)), s = byCalm.slice(0, P.topN).find((x) => !mine.has(x.external_id) && (!(state.exitedAt[x.external_id] > now - 10 * 60e3) || back(x))); // 10 min: no buy back right after an exit
     // for the stream: the basket ranking, and each pump the filter kept out (in the top N by price, 1.5x its calm price)
     basket = byCalm.slice(0, 18).map((x) => { const p5 = priceSince(x.external_id, now - BREADTH_WINDOW); return { name: x.name, price: x.last_price_cents, calm: calm(x), ch5: p5 ? x.last_price_cents / p5 - 1 : null, held: mine.has(x.external_id) }; });
     for (const x of ranked.slice(0, P.topN)) {

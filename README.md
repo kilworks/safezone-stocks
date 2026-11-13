@@ -29,6 +29,9 @@ Positions every 2 s, map (health, deaths) every second, and every map read sells
 | `surv` | 20 s after a new death, the 2 highest-priced live contestants (at most 2 open) | after 30 min |
 | `crash` | a drop of 25%+ between two scans with no pump in the 3 min before (logged as kind `dip`) | after 10 min |
 
+- **Spike exit** (since 2026-11-13, `spike` 1.5, 0 = off): any holding at 1.5x its calm price (the lowest of its own
+  prices 2 and 5 min ago, read every 2 s) is sold into the pump (`spike` in the sell reason); the basket may buy it
+  back without the 10 min wait once it is under `spikeRebuy` (1.2) x that calm price.
 - **Run mode**: a crash or survivor buy that gains 10% rides a 15% trail from its peak, up to 2 h, instead of its timer.
 - **Every position**, including yours: sold at death (grave, health feed or roster), under 85% HP, at elimination or when the
   stock stops trading. Never bought under 90% HP, outside the zone or dead. Set on 20/10 at 02:15 UTC with 11 left in a
@@ -65,6 +68,19 @@ Momentum paid only in the opening rush and lost afterwards; chasing a pump loses
 copying the best wallets lost 10% (they are the pumpers); the whole market drifts down (-1.4% to -5% per 30 min held);
 scanning every 5 s instead of 15 s earned less (it buys mid-fall); adding to winners lost. What paid: the top basket
 (+404 Cx from 866 on one evening, both halves positive) and crash rebounds with run mode. Small samples: hints, not laws.
+
+2026-11-13, after the event, on the whole tape (178,149 trades) and the site's recap. The October engine ended at
++1,988 Cx over 560 trades and paid about 1,280 Cx of fees; the best wallet made +61,000 with 39 trades and 13 wallets
+made over 10,000. The tape shows where that money came from: single buys of 20,000 to 50,000 Cx that take a stock to
+5x in one trade (19/10 03:27 UTC: 841,000 Cx bought in 5 min by 724 wallets), back down within a minute. Whoever
+held the stock before and sold into the buy took it. Holding alone does not pay: the living rise (median price 15 Cx
+at +6 h, 103 at +36 h, 227 at +72 h) but a stock of 60 Cx or more loses a third in the hour before its death, 20% at
+the death and is at 0.36x four hours later. `node spike.mjs` replays the rule the engine now has (basket of the
+leaders, sell any holding at 1.5x its calm price 5 s later, buy it back under 1.2x): 600 Cx end at 18,325 with 20
+stocks (8,426 with 10, 17,552 with 40) against 1,113 for the same basket without the spike exit; each day alone, from
+a fresh 600 Cx: 4,474, 2,664, 2,466, 667; a reaction 15 s late still gives 14,252, 60 s late 5,521. One event, one
+tape, settings read off that same tape, and the replay cannot see that our own sells change what others do: a strong
+hint, not a forecast. Not seen live yet.
 
 18/10 21:00 UTC: the basket lost 130 Cx on two pumps (a stock pushed from 22 to 227 Cx by dozens of wallets in a few
 seconds, bought at 227, back at 22 thirty seconds later). The replay now buys on any scan, as the engine does (it
@@ -370,7 +386,7 @@ periodic job hidden behind a comment), each with a control case that must fail.
 
 ## Files
 
-`engine.mjs` the engine and supervisor · `backtest.mjs` replays, tuning, decoders, text · `check.mjs` self-check ·
+`engine.mjs` the engine and supervisor · `backtest.mjs` replays, tuning, decoders, text · `spike.mjs` replay of the spike exit on the tape · `check.mjs` self-check ·
 `status.mjs` status · `import-cookies.mjs` cookie import · `kick_say.py` chat line (Python: Kick blocks Node's TLS
 fingerprint) · `stream/run.sh` stream · `stream/check.sh` stream alert · `stream/snap.sh` stream screenshots · `dashboard.mjs`
 local dashboard server · `dashboard.html` its page · `scripts/screenshots.mjs` dashboard screenshots · `docs/screenshots/`
