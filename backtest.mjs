@@ -36,6 +36,14 @@ export function sayText(side, name, cash, lines) {
 // Later kind-2 frames are updates, applied in order.
 export function decodeHealth(frames) {
   const out = {};
+  // Miami (13/11): health in clear, frames { t: 'slots' | 'status', d } (status: inside, outside, eliminated, disabled)
+  const ms = frames.find((f) => f.t === 'slots')?.d, st = frames.find((f) => f.t === 'status')?.d;
+  if (ms && st) {
+    const name = new Map(ms.map((s) => [s.slot, String(s.username).toLowerCase()])), has = (x, k) => x.effects?.some((e) => e.kind === k);
+    for (const x of st) if (name.has(x.slot)) out[name.get(x.slot)] = { hp: x.hp, max: x.max_hp, alive: !!x.alive, out: x.status === 'outside',
+      poison: has(x, 'poison'), drone: has(x, 'drone'), shield: has(x, 'shield') ? 'shield' : '' };
+    return out;
+  }
   let slots = null;
   for (const f of frames) if (f.text?.includes('"contestants"')) slots = new Map(JSON.parse(f.text).data.slots.slots.map((s) => [s.slot, s.username.toLowerCase()]));
   if (!slots) return out;

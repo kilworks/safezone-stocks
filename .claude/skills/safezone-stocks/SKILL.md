@@ -99,6 +99,10 @@ While no session, Dagu replaces the dry engine every 5 min and a new login windo
 
 ## Stream and chat texts (kil 13/11)
 
+- Map (13/11 21:20 fix): Miami frames are JSON strings `{ t, d }`; health is in clear in `status` (slot, alive,
+  status inside/outside/eliminated/disabled, hp, max_hp, effects) with names in `slots`. `scripts/probe-map.mjs` prints
+  the shapes (never positions). ALIVE then read 112/186 and the HP exit (under 85 %) sold at once.
+
 - Never "play money" or "automated" on the stream, in its title or in chat (`check.mjs` fails on it). Kick title:
   "SafeZone stock bot | live trading dashboard | Miami" (set with vodloop `kickapi.set_title`, CHAN_ROOT cx247vods, on Oracle).
 - Header clock `ck.txt`: Miami time, US then European format, pushed by the engine every 2 s.
@@ -113,7 +117,6 @@ While no session, Dagu replaces the dry engine every 5 min and a new login windo
   13/11 for an automated job). REWORK.md is not amended yet: ask kil once, then amend it.
 - `retune` writes `params.json` in place (no rename): a reload at that instant could read a half file.
 
-- ALIVE tile at 0: roster 186 read, HP feed empty (`health` 0). Miami's health frame differs; not fixed yet.
 - `END_AT=2026-11-21T00:00:00Z` is a guess: set the announced end when known.
 - U1 (what the viewer leaderboard ranks) is still unknown: REWORK.md section 4.
 

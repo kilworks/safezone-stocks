@@ -142,7 +142,9 @@ const lastHp = {}; // name -> hp / max last logged
 async function readMap() {
   const r = await ctx.request.get(MAP, { headers: H });
   if (r.status() !== 200) return log({ ev: 'map_err', status: r.status() });
-  const { frames } = await r.json();
+  // Miami (13/11): each frame is a JSON string { t, d }; turned back into October's { text } shape for the loop below
+  const frames = (await r.json()).frames.map((f) => typeof f !== 'string' ? f : ((o) => o.t === 'contestants' ? { text: JSON.stringify({ type: o.t, data: { roster: o.d } }) }
+    : o.t === 'game_items' ? { text: JSON.stringify({ type: o.t, data: { items: o.d } }) } : o)(JSON.parse(f)));
   Object.assign(health, decodeHealth(frames));
   const now = Date.now();
   for (const [n, h] of Object.entries(health)) if (h.max) {
@@ -363,7 +365,7 @@ function pushStream() {
   const out = { pg: total >= 0 ? `PROFIT ${cx(total)} Cx` : ' ', pr: total < 0 ? `PROFIT ${cx(total)} Cx` : ' ', ps: `realized ${cx(me.realized_pnl_cents)}   open ${cx(me.unrealized_pnl_cents)}` };
   // header clock, Miami time in US and European formats (kil 13/11)
   const tz = { timeZone: 'America/New_York' }, us = new Date(now).toLocaleString('en-US', { ...tz, month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-  out.ck = `Safe Zone  -  Miami FL   ${us}   /   ${new Date(now).toLocaleString('en-GB', { ...tz, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}`;
+  out.ck = `MIAMI  ${us.replace(",", "")}  /  ${new Date(now).toLocaleString('en-GB', { ...tz, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '')}`;
   const B = bigBanner(d.others, names, now);
   Object.assign(out, { bw: B.w, bg: B.g, br: B.r, ticker: streamTicker(d), dash: L.w, g: L.g, r: L.r, y: L.y, c: L.c });
   // KPI tiles (labels are in run.sh)

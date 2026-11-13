@@ -28,6 +28,10 @@ assert.deepStrictEqual(compact({ external_id: 'x', occurred_at: '2026-10-17T20:0
   assert.deepStrictEqual(h, { aa: { hp: 0, max: 100, alive: false, out: false, ...base }, bb: { hp: 50, max: 110, alive: true, out: true, ...base },
     cc: { hp: 70, max: 100, alive: true, out: false, poison: true, drone: true, shield: 'kick' } }, 'health decode, with shield, poison and drone');
   assert.deepStrictEqual(decodeHealth([frame(2, [[0, 2, 1, 90, 100]])]), {}, 'control: no contestants frame, no names');
+  // Miami frames { t, d }: health in clear by slot
+  const mh = decodeHealth([{ t: 'slots', d: [{ slot: 4, username: 'Ann' }] }, { t: 'status', d: [{ slot: 4, alive: true, status: 'outside', hp: 87, max_hp: 100, effects: [{ kind: 'shield' }, { kind: 'poison' }] }, { slot: 9, alive: false, status: 'eliminated', hp: 0, max_hp: 100, effects: [] }] }]);
+  assert.deepStrictEqual(mh, { ann: { hp: 87, max: 100, alive: true, out: true, poison: true, drone: false, shield: 'shield' } });
+  assert.deepStrictEqual(decodeHealth([{ t: 'status', d: [{ slot: 4, alive: true, status: 'inside', hp: 1, max_hp: 100, effects: [] }] }]), {}, 'control: no slots frame, no names');
 }
 // cookie import: keep only kick session_token (URL-decoded) and the site's token cookies; fake values only
 {
